@@ -1,0 +1,11 @@
+input createPostInput {
+  title: String
+  description: String
+  author: String
+}
+
+input updatePostInput {
+  title: String
+  description: String
+  author: String
+}

@@ -1,0 +1,23 @@
+# import createPostInput from "inputs.graphql"
+# import updatePostInput from "inputs.graphql"
+scalar Date
+
+type Query {
+  posts: [Post]!
+}
+
+type Mutation {
+  createPost(data: createPostInput!): Post
+  updatePost(id: ID!, data: updatePostInput!): Post
+  deletePost(id: ID!): Post
+  deleteAllPosts: String
+}
+
+type Post {
+  id: ID!
+  title: String
+  description: String
+  author: String
+  createdAt: Date
+  updatedAt: Date
+}
