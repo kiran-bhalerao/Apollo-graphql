@@ -9,3 +9,20 @@ input updatePostInput {
   description: String
   author: String
 }
+
+input addUserInput {
+  email: String
+  username: String
+  password: String
+}
+
+input updateUserInput {
+  email: String
+  username: String
+  password: String
+}
+
+input loginInput {
+  username: String!
+  password: String!
+}

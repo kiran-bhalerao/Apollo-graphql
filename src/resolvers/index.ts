@@ -1,16 +1,25 @@
-import { createPost, deleteAllPosts, deletePost, updatePost } from './mutations'
-import { posts } from './query'
+import { addUser, createPost, deleteAllPosts, deletePost, deleteUser, login, updatePost, updateUser } from './mutations'
+import { posts, users } from './query'
+import { post } from './subscription'
 
 // Provide resolver functions for your schema fields
 const resolvers = {
   Query: {
-    posts
+    posts,
+    users
   },
   Mutation: {
     createPost,
     updatePost,
     deletePost,
-    deleteAllPosts
+    deleteAllPosts,
+    addUser,
+    updateUser,
+    deleteUser,
+    login
+  },
+  Subscription: {
+    post
   }
 }
 

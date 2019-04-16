@@ -1,23 +1,54 @@
 # import createPostInput from "inputs.graphql"
 # import updatePostInput from "inputs.graphql"
+# import addUserInput from "inputs.graphql"
+# import loginInput from "inputs.graphql"
 scalar Date
 
 type Query {
   posts: [Post]!
+  users: [UserQuery]
 }
 
 type Mutation {
+  #posts
   createPost(data: createPostInput!): Post
   updatePost(id: ID!, data: updatePostInput!): Post
   deletePost(id: ID!): Post
   deleteAllPosts: String
+  #users
+  addUser(data: addUserInput!): User
+  updateUser(id: ID!, data: updateUserInput!): User
+  deleteUser(id: ID!): User
+  #user auth
+  login(data: loginInput!): AuthPayload!
+}
+
+type Subscription {
+  post: Post
 }
 
 type Post {
   id: ID!
-  title: String
+  title: String!
   description: String
-  author: String
+  author: String!
   createdAt: Date
   updatedAt: Date
+}
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  password: String!
+}
+
+type UserQuery {
+  id: ID!
+  username: String!
+}
+
+type AuthPayload {
+  token: String!
+  message: String
 }
