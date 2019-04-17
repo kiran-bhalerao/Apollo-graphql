@@ -7,7 +7,13 @@ const { Schema } = mongoose
 const userSchema = new Schema({
   email: String,
   username: String,
-  password: String
+  password: String,
+  posts: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'post'
+    }
+  ]
 })
 
 userSchema.pre<T.IUser>('save', function(next) {

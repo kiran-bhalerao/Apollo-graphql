@@ -4,9 +4,11 @@ import { importSchema } from 'graphql-import'
 import { makeExecutableSchema } from 'graphql-tools'
 import http from 'http'
 import jwt from 'jsonwebtoken'
+import _ from 'lodash'
 import databaseConnect from './src/config/database'
 import console from './src/config/logs'
 import resolvers from './src/resolvers'
+import { getErrorType } from './src/utils/getErrorType'
 import { refreshTokens } from './src/utils/getToken'
 
 const { NODE_ENV } = process.env
@@ -18,17 +20,18 @@ const typeDefs = importSchema('./src/schema/schema.graphql')
 const app = express()
 
 app.use(async (req: any, res, next) => {
-  const token = req.headers['x-token']
-  if (token) {
+  const token = req.headers['x-auth-token']
+  const refreshToken = req.headers['x-refresh-token']
+
+  if (token && refreshToken) {
     try {
       const decoded: any = jwt.verify(token, process.env.JWT_SECRET)
       req.user = decoded.user
     } catch (err) {
-      const refreshToken = req.headers['x-refresh-token']
       const newTokens = await refreshTokens(refreshToken)
       if (newTokens.accessToken && newTokens.refreshToken) {
-        res.set('Access-Control-Expose-Headers', 'x-token, x-refresh-token')
-        res.set('x-token', newTokens.accessToken)
+        res.set('Access-Control-Expose-Headers', 'x-auth-token, x-refresh-token')
+        res.set('x-auth-token', newTokens.accessToken)
         res.set('x-refresh-token', newTokens.refreshToken)
       }
       req.user = newTokens.user
@@ -44,14 +47,19 @@ const schema = makeExecutableSchema({
 
 const server = new ApolloServer({
   schema,
-  context: (ctx: any) => {
-    const user = ctx.req.user || null
+  context: ({ req }: { req: any }) => {
+    const user = req.user ? _.pick(req.user, ['_id', 'username', 'email', 'posts']) : null
 
     return {
       pubsub,
       user,
       POST_CREATED
     }
+  },
+  formatError: ({ message }: { message: string }) => {
+    const error = getErrorType(message)
+
+    return { ...error }
   }
 })
 

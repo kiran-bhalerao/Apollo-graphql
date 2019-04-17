@@ -1,19 +1,30 @@
 import bcrypt from 'bcryptjs'
+import { errorName } from '../config/errors'
 import Post from '../models/post'
 import User from '../models/user'
 import * as T from '../types/resolver'
 import getHash from '../utils/getHash'
 import { createTokens } from '../utils/getToken'
 
-export const createPost = async (_: T.Parent, { data, user }: T.Args, { pubsub, POST_CREATED }: any) => {
-  console.log(user)
-  const { title, description, author } = data
+export const createPost = async (_: T.Parent, { data }: T.Args, { pubsub, user, POST_CREATED }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const { title, description } = data
   const post = new Post({
     title,
     description,
-    author,
+    author: {
+      id: user._id,
+      username: user.username
+    },
     createdAt: new Date(),
     updatedAt: new Date()
+  })
+
+  await User.findByIdAndUpdate(user._id, {
+    $push: { posts: post._id }
   })
 
   await pubsub.publish(POST_CREATED, { createdPost: post })
@@ -21,8 +32,18 @@ export const createPost = async (_: T.Parent, { data, user }: T.Args, { pubsub, 
   return post.save()
 }
 
-export const updatePost = async (_: T.Parent, { id, data }: T.Args) => {
-  const post = await Post.findByIdAndUpdate(
+export const updatePost = async (_: T.Parent, { id, data }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = user.posts.some((post: string) => post.toString() === id)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  return Post.findByIdAndUpdate(
     id,
     {
       ...data,
@@ -30,16 +51,32 @@ export const updatePost = async (_: T.Parent, { id, data }: T.Args) => {
     },
     { new: true }
   )
-
-  return post
 }
 
-export const deletePost = async (_: T.Parent, { id }: T.Args) => Post.findByIdAndDelete(id)
+export const deletePost = async (_: T.Parent, { id }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
 
-export const deleteAllPosts = async () => {
-  await Post.deleteMany({})
+  const hasPost = user.posts.some((post: string) => post.toString() === id)
 
-  return 'All posts are deleted'
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  return Post.findByIdAndDelete(id)
+}
+
+export const deleteAllPosts = async (_: T.Parent, args: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  await Post.deleteMany({
+    'author.id': user._id
+  })
+
+  return 'your all posts are deleted'
 }
 
 export const addUser = async (_: T.Parent, { data }: T.Args) => {
@@ -66,12 +103,12 @@ export const login = async (_: T.Parent, { data }: T.Args) => {
   if (!user) throw new Error('invalid username')
 
   const isMatch = await bcrypt.compare(password, user.password)
-  const tokens: any = await createTokens(user)
+  const [accessToken, refreshToken] = await createTokens(user)
 
   if (isMatch) {
     return {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
+      accessToken,
+      refreshToken,
       message: 'User login successfully.'
     }
   }

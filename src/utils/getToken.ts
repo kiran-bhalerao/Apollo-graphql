@@ -1,4 +1,3 @@
-// import jwt from 'jwt-simple'
 import jwt from 'jsonwebtoken'
 import User from '../models/user'
 import * as T from '../types/user'
@@ -8,8 +7,8 @@ const { JWT_SECRET } = process.env
 export const createTokens = (user: T.IUser) => {
   const REFRESH_SECRET = JWT_SECRET + user.password
 
-  const accessToken = jwt.sign(user._id, JWT_SECRET, { expiresIn: '1m' })
-  const refreshToken = jwt.sign(user._id, REFRESH_SECRET, { expiresIn: '7d' })
+  const accessToken = jwt.sign({ sub: user._id }, JWT_SECRET, { expiresIn: '1m' })
+  const refreshToken = jwt.sign({ sub: user._id }, REFRESH_SECRET, { expiresIn: '7d' })
 
   return Promise.all([accessToken, refreshToken])
 }
@@ -20,7 +19,7 @@ export const refreshTokens = async (refreshToken: string) => {
     // decode token without verifying,
     // just get the payload without providing any private key
     const decodedUser: any = jwt.decode(refreshToken)
-    userId = decodedUser._id
+    userId = decodedUser.sub
   } catch (err) {
     return {}
   }

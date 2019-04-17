@@ -4,10 +4,15 @@ import getLocalTime from '../utils/getLocalTime'
 
 const { Schema } = mongoose
 
+const authorSchema = new Schema({
+  id: String,
+  username: String
+})
+
 const postSchema = new Schema({
   title: String,
   description: String,
-  author: String,
+  author: authorSchema,
   createdAt: {
     type: Date,
     default: Date.now
