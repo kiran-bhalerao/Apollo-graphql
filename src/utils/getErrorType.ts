@@ -1,4 +1,4 @@
-import * as E from '../constants/errors'
+import * as E from '../define/errors'
 
 export const getErrorType = (errorName: string) => {
   let errorType: any = E.errorType

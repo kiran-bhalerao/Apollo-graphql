@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { errorName } from '../constants/errors'
-import { POST_CREATED } from '../constants/variables'
+import { errorName } from '../define/errors'
+import { POST_CREATED } from '../define/variables'
 import Post from '../models/post'
 import User from '../models/user'
 import * as T from '../types/resolver'

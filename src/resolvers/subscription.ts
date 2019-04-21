@@ -1,4 +1,4 @@
-import { POST_CREATED } from '../constants/variables'
+import { POST_CREATED } from '../define/variables'
 import * as T from '../types/resolver'
 
 export const post = {
