@@ -1,6 +1,6 @@
 # import createPostInput from "inputs.graphql"
 # import updatePostInput from "inputs.graphql"
-# import addUserInput from "inputs.graphql"
+# import signupInput from "inputs.graphql"
 # import loginInput from "inputs.graphql"
 scalar Date
 
@@ -16,11 +16,12 @@ type Mutation {
   deletePost(id: ID!): Post
   deleteAllPosts: String
   #users
-  addUser(data: addUserInput!): User
-  updateUser(id: ID!, data: updateUserInput!): User
-  deleteUser(id: ID!): User
+  updateUser(data: updateUserInput!): User
+  deleteUser: User
   #user auth
+  signup(data: signupInput!): User
   login(data: loginInput!): AuthPayload!
+  forgatePassword(email: String!): String
 }
 
 type Subscription {

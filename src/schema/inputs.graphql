@@ -8,7 +8,7 @@ input updatePostInput {
   description: String
 }
 
-input addUserInput {
+input signupInput {
   email: String
   username: String
   password: String

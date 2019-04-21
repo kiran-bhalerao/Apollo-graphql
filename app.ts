@@ -1,24 +1,26 @@
 import { ApolloServer, PubSub } from 'apollo-server-express'
+import bodyParser from 'body-parser'
 import express from 'express'
+import exphbs from 'express-handlebars'
 import { importSchema } from 'graphql-import'
 import { makeExecutableSchema } from 'graphql-tools'
 import http from 'http'
 import jwt from 'jsonwebtoken'
 import _ from 'lodash'
 import databaseConnect from './src/config/database'
-import console from './src/config/logs'
+import redisClient from './src/config/redis'
+import console from './src/constants/logs'
 import resolvers from './src/resolvers'
+import routes from './src/routes'
 import { getErrorType } from './src/utils/getErrorType'
 import { refreshTokens } from './src/utils/getToken'
 
-const { NODE_ENV } = process.env
-const POST_CREATED = 'post_created'
-
-const pubsub = new PubSub()
 const typeDefs = importSchema('./src/schema/schema.graphql')
-
+const { NODE_ENV } = process.env
+const pubsub = new PubSub()
 const app = express()
 
+// express middleware
 app.use(async (req: any, res, next) => {
   const token = req.headers['x-auth-token']
   const refreshToken = req.headers['x-refresh-token']
@@ -40,6 +42,18 @@ app.use(async (req: any, res, next) => {
   next()
 })
 
+// body-parser middleware
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+
+// handlebars middleware
+app.engine('handlebars', exphbs({ defaultLayout: 'main' }))
+app.set('view engine', 'handlebars')
+app.set('views', './src/views')
+
+// express routes
+routes(app, redisClient)
+
 const schema = makeExecutableSchema({
   typeDefs,
   resolvers
@@ -52,29 +66,32 @@ const server = new ApolloServer({
 
     return {
       pubsub,
-      user,
-      POST_CREATED
+      redisClient,
+      user
     }
   },
-  formatError: ({ message }: { message: string }) => {
-    const error = getErrorType(message)
+  formatError: (err: any) => {
+    const errorType = getErrorType(err.message)
+    const error = _.isEmpty(errorType) ? err : errorType
 
     return { ...error }
   }
 })
 
+// apollo middleware
 server.applyMiddleware({ app })
 
+// server connection
 const httpServer = http.createServer(app)
 server.installSubscriptionHandlers(httpServer)
 
 const startServer = async () => {
   await databaseConnect()
-  httpServer.listen({ port: 4000 }, () => console.rainbow(`Server ready at http://localhost:4000${server.graphqlPath}`)) //🌈
+  httpServer.listen({ port: 4000 }, () =>
+    console.rainbow(`Server ready at ${process.env.BASE_URL}${server.graphqlPath}`)
+  ) //🌈
 }
 
-if (NODE_ENV !== 'test') {
-  startServer()
-}
+startServer()
 
 export default { startServer }

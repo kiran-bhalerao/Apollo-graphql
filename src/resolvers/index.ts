@@ -1,4 +1,14 @@
-import { addUser, createPost, deleteAllPosts, deletePost, deleteUser, login, updatePost, updateUser } from './mutations'
+import {
+  createPost,
+  deleteAllPosts,
+  deletePost,
+  deleteUser,
+  forgatePassword,
+  login,
+  signup,
+  updatePost,
+  updateUser
+} from './mutations'
 import { posts, users } from './query'
 import { post } from './subscription'
 
@@ -13,10 +23,11 @@ const resolvers = {
     updatePost,
     deletePost,
     deleteAllPosts,
-    addUser,
+    signup,
     updateUser,
     deleteUser,
-    login
+    login,
+    forgatePassword
   },
   Subscription: {
     post

@@ -1,12 +1,16 @@
 import bcrypt from 'bcryptjs'
-import { errorName } from '../config/errors'
+import { errorName } from '../constants/errors'
+import { POST_CREATED } from '../constants/variables'
 import Post from '../models/post'
 import User from '../models/user'
 import * as T from '../types/resolver'
+import { getForgatePasswordTamplate } from '../utils/getForgatePasswordTamplate'
 import getHash from '../utils/getHash'
 import { createTokens } from '../utils/getToken'
+import { getUuid } from '../utils/getUuid'
+import sendMail from '../utils/sendMail'
 
-export const createPost = async (_: T.Parent, { data }: T.Args, { pubsub, user, POST_CREATED }: any) => {
+export const createPost = async (_: T.Parent, { data }: T.Args, { pubsub, user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -67,7 +71,7 @@ export const deletePost = async (_: T.Parent, { id }: T.Args, { user }: any) => 
   return Post.findByIdAndDelete(id)
 }
 
-export const deleteAllPosts = async (_: T.Parent, args: T.Args, { user }: any) => {
+export const deleteAllPosts = async (_: T.Parent, _args: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -79,22 +83,48 @@ export const deleteAllPosts = async (_: T.Parent, args: T.Args, { user }: any) =
   return 'your all posts are deleted'
 }
 
-export const addUser = async (_: T.Parent, { data }: T.Args) => {
+export const updateUser = async (_: T.Parent, { data }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  return User.findByIdAndUpdate(user._id, { ...data }, { new: true })
+}
+
+export const deleteUser = async (_: T.Parent, _args: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  return User.findByIdAndDelete(user._id)
+}
+
+export const forgatePassword = async (_: T.Parent, { email }: T.Args, { redisClient }: any) => {
+  const user: any = await User.findOne({ email })
+  const key = getUuid()
+  const uid = user._id.toString()
+  await redisClient.set(key, uid, 'EX', 1800)
+
+  const link = `${process.env.BASE_URL}/forgate/password/${key}`
+  const subject = 'Forgate Password'
+  const template = getForgatePasswordTamplate(link, user.username)
+
+  sendMail(email, subject, template)
+
+  return 'Check your mail and recreate your password.'
+}
+
+export const signup = async (_: T.Parent, { data }: T.Args) => {
   const { email, username, password } = data
   const hashPassword = await getHash(password)
   const user = await new User({
     email,
     username,
     password: hashPassword
-  })
+  }).save()
 
-  return user.save()
+  return _.pick(user, ['email', 'username'])
 }
-
-export const updateUser = async (_: T.Parent, { id, data }: T.Args) =>
-  User.findByIdAndUpdate(id, { ...data }, { new: true })
-
-export const deleteUser = async (_: T.Parent, { id }: T.Args) => User.findByIdAndDelete(id)
 
 export const login = async (_: T.Parent, { data }: T.Args) => {
   const { username, password } = data
