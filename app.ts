@@ -10,6 +10,7 @@ import _ from 'lodash'
 import databaseConnect from './src/config/database'
 import redisClient from './src/config/redis'
 import console from './src/define/logs'
+import User from './src/models/user'
 import resolvers from './src/resolvers'
 import routes from './src/routes'
 import { getErrorType } from './src/utils/getErrorType'
@@ -28,7 +29,8 @@ app.use(async (req: any, res, next) => {
   if (token && refreshToken) {
     try {
       const decoded: any = jwt.verify(token, process.env.JWT_SECRET)
-      req.user = decoded.user
+      const user = await User.findById(decoded.sub)
+      req.user = user
     } catch (err) {
       const newTokens = await refreshTokens(refreshToken)
       if (newTokens.accessToken && newTokens.refreshToken) {

@@ -1,4 +1,5 @@
 import User from '../models/user'
+import getHash from '../utils/getHash'
 
 export default (app: any, redisClient: any) => {
   app.get('/forgate/password/:id', async (req: any, res: any) => {
@@ -24,8 +25,10 @@ export default (app: any, redisClient: any) => {
       return res.send({ message: 'Invalid confirm password' })
     }
 
+    const hash = await getHash(password)
+
     const userId = await redisClient.get(id)
-    User.findByIdAndUpdate(userId, { password }, { new: true })
+    User.findByIdAndUpdate(userId, { password: hash }, { new: true })
       .then(() => res.send('Password updated successfully'))
       .catch((e: any) => res.send({ ...e }))
   })

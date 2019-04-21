@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import _ from 'lodash'
 import { errorName } from '../define/errors'
 import { POST_CREATED } from '../define/variables'
 import Post from '../models/post'
@@ -10,7 +11,7 @@ import { createTokens } from '../utils/getToken'
 import { getUuid } from '../utils/getUuid'
 import sendMail from '../utils/sendMail'
 
-export const createPost = async (_: T.Parent, { data }: T.Args, { pubsub, user }: any) => {
+export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -36,7 +37,7 @@ export const createPost = async (_: T.Parent, { data }: T.Args, { pubsub, user }
   return post.save()
 }
 
-export const updatePost = async (_: T.Parent, { id, data }: T.Args, { user }: any) => {
+export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -57,7 +58,7 @@ export const updatePost = async (_: T.Parent, { id, data }: T.Args, { user }: an
   )
 }
 
-export const deletePost = async (_: T.Parent, { id }: T.Args, { user }: any) => {
+export const deletePost = async (parent: T.Parent, { id }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -68,10 +69,16 @@ export const deletePost = async (_: T.Parent, { id }: T.Args, { user }: any) => 
     throw new Error(errorName.INVALID_POST)
   }
 
+  const remainingPosts = user.posts.filter((post: string) => post.toString() !== id)
+
+  await User.findByIdAndUpdate(user._id, {
+    posts: [...remainingPosts]
+  })
+
   return Post.findByIdAndDelete(id)
 }
 
-export const deleteAllPosts = async (_: T.Parent, _args: T.Args, { user }: any) => {
+export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -83,7 +90,7 @@ export const deleteAllPosts = async (_: T.Parent, _args: T.Args, { user }: any) 
   return 'your all posts are deleted'
 }
 
-export const updateUser = async (_: T.Parent, { data }: T.Args, { user }: any) => {
+export const updateUser = async (parent: T.Parent, { data }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -91,15 +98,19 @@ export const updateUser = async (_: T.Parent, { data }: T.Args, { user }: any) =
   return User.findByIdAndUpdate(user._id, { ...data }, { new: true })
 }
 
-export const deleteUser = async (_: T.Parent, _args: T.Args, { user }: any) => {
+export const deleteUser = async (parent: T.Parent, _args: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
 
+  await Post.deleteMany({
+    'author.id': user._id
+  })
+
   return User.findByIdAndDelete(user._id)
 }
 
-export const forgatePassword = async (_: T.Parent, { email }: T.Args, { redisClient }: any) => {
+export const forgatePassword = async (parent: T.Parent, { email }: T.Args, { redisClient }: any) => {
   const user: any = await User.findOne({ email })
   const key = getUuid()
   const uid = user._id.toString()
@@ -114,7 +125,7 @@ export const forgatePassword = async (_: T.Parent, { email }: T.Args, { redisCli
   return 'Check your mail and recreate your password.'
 }
 
-export const signup = async (_: T.Parent, { data }: T.Args) => {
+export const signup = async (parent: T.Parent, { data }: T.Args) => {
   const { email, username, password } = data
   const hashPassword = await getHash(password)
   const user = await new User({
@@ -126,7 +137,7 @@ export const signup = async (_: T.Parent, { data }: T.Args) => {
   return _.pick(user, ['email', 'username'])
 }
 
-export const login = async (_: T.Parent, { data }: T.Args) => {
+export const login = async (parent: T.Parent, { data }: T.Args) => {
   const { username, password } = data
 
   const user: any = await User.findOne({ username })
