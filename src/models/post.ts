@@ -1,17 +1,26 @@
 import * as mongoose from 'mongoose'
 import * as T from '../types/post'
 import getLocalTime from '../utils/getLocalTime'
+import commentSchema from './comment'
 
 const { Schema } = mongoose
 
 const authorSchema = new Schema({
-  id: String,
-  username: String
+  authorId: String,
+  authorName: String
 })
 
 const postSchema = new Schema({
   title: String,
   description: String,
+  type: {
+    type: String,
+    enum: ['story', 'question', 'news'],
+    default: 'story'
+  },
+  likes: Number,
+  tags: [String],
+  comments: [commentSchema],
   author: authorSchema,
   createdAt: {
     type: Date,

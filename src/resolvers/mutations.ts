@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs'
-import _ from 'lodash'
 import { errorName } from '../define/errors'
 import { POST_CREATED } from '../define/variables'
 import Post from '../models/post'
@@ -127,31 +126,36 @@ export const forgatePassword = async (parent: T.Parent, { email }: T.Args, { red
 
 export const signup = async (parent: T.Parent, { data }: T.Args) => {
   const { email, username, password } = data
+
+  const userExist: any = await User.findOne({ email })
+  if (userExist) throw new Error('Email already rigistered')
+
   const hashPassword = await getHash(password)
   const user = await new User({
     email,
     username,
-    password: hashPassword
+    password: hashPassword,
+    createdAt: new Date()
   }).save()
 
-  return _.pick(user, ['email', 'username'])
+  return `Welcome ${username}, your registration done successfully.`
 }
 
 export const login = async (parent: T.Parent, { data }: T.Args) => {
-  const { username, password } = data
+  const { email, password } = data
 
-  const user: any = await User.findOne({ username })
+  const user: any = await User.findOne({ email })
   if (!user) throw new Error('invalid username')
 
   const isMatch = await bcrypt.compare(password, user.password)
+  if (!isMatch) {
+    throw new Error('invalid password.')
+  }
   const [accessToken, refreshToken] = await createTokens(user)
 
-  if (isMatch) {
-    return {
-      accessToken,
-      refreshToken,
-      message: 'User login successfully.'
-    }
+  return {
+    accessToken,
+    refreshToken,
+    message: 'User login successfully.'
   }
-  throw new Error('invalid password.')
 }

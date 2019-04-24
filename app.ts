@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken'
 import _ from 'lodash'
 import databaseConnect from './src/config/database'
 import redisClient from './src/config/redis'
-import console from './src/define/logs'
+import console from './src/define/console'
 import User from './src/models/user'
 import resolvers from './src/resolvers'
 import routes from './src/routes'
@@ -17,7 +17,6 @@ import { getErrorType } from './src/utils/getErrorType'
 import { refreshTokens } from './src/utils/getToken'
 
 const typeDefs = importSchema('./src/schema/schema.graphql')
-const { NODE_ENV } = process.env
 const pubsub = new PubSub()
 const app = express()
 

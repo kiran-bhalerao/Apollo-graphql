@@ -56,7 +56,7 @@ export const getForgatePasswordTamplate = (link: string, username: string) => {
                           <tr>
                             <td width="36"></td>
                             <td width="454" align="left" valign="top">
-                              Dear ${username},<br /><br />A request was made to reset the password for your apollo-server
+                              Dear ${username},<br /><br />A request was made to reset the password for your graphql-apollo-server
                               account. You can reset your password by clicking the following button. <br /><br /><br />
                               <center>
                                 <a href="${link}" target="_blank" class="button">
@@ -65,7 +65,7 @@ export const getForgatePasswordTamplate = (link: string, username: string) => {
                               </center>
                               <br /><br />If you did not need to reset your password, please ignore this email and the
                               link will be expired in 30 minutes.<br /><br /><br />Thanks,<br />Best Regards,<br />The
-                              apollo-server Team
+                              graphql-apollo-server Team
                             </td>
                             <td width="36"></td>
                           </tr>

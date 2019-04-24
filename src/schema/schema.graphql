@@ -19,7 +19,7 @@ type Mutation {
   updateUser(data: updateUserInput!): User
   deleteUser: User
   #user auth
-  signup(data: signupInput!): SignupPayload!
+  signup(data: signupInput!): String!
   login(data: loginInput!): AuthPayload!
   forgatePassword(email: String!): String
 }
@@ -60,9 +60,4 @@ type AuthPayload {
   accessToken: String!
   refreshToken: String!
   message: String
-}
-
-type SignupPayload {
-  email: String!
-  username: String!
 }
