@@ -18,7 +18,10 @@ const postSchema = new Schema({
     enum: ['story', 'question', 'news'],
     default: 'story'
   },
-  likes: Number,
+  likes: {
+    type: Number,
+    default: 0
+  },
   tags: [String],
   comments: [commentSchema],
   author: authorSchema,

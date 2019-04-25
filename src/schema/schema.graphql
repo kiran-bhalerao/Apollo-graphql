@@ -15,6 +15,9 @@ type Mutation {
   updatePost(id: ID!, data: updatePostInput!): Post
   deletePost(id: ID!): Post
   deleteAllPosts: String
+  #post-ops
+  likePost(postId: ID!): Post!
+  commentPost(postId: ID!, comment: String!): Post!
   #users
   updateUser(data: updateUserInput!): User
   deleteUser: User

@@ -15,10 +15,12 @@ export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, u
     throw new Error(errorName.UNAUTHORIZED)
   }
 
-  const { title, description } = data
+  const { title, description, type, tags } = data
   const post = new Post({
     title,
     description,
+    type,
+    tags: [...tags],
     author: {
       id: user._id,
       username: user.username
@@ -158,4 +160,38 @@ export const login = async (parent: T.Parent, { data }: T.Args) => {
     refreshToken,
     message: 'User login successfully.'
   }
+}
+
+export const likePost = async (parent: T.Parent, { postId }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  return Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } }, { new: true })
+}
+
+export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  return Post.findByIdAndUpdate(
+    postId,
+    {
+      $push: { 'comments.comment': comment, 'comments.user.userId': user._id, 'comments.user.username': user.username }
+    },
+    { new: true }
+  )
 }
