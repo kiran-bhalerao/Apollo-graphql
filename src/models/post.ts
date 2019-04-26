@@ -10,6 +10,11 @@ const authorSchema = new Schema({
   authorName: String
 })
 
+const likeSchema = new Schema({
+  users: [String],
+  count: Number
+})
+
 const postSchema = new Schema({
   title: String,
   description: String,
@@ -19,8 +24,11 @@ const postSchema = new Schema({
     default: 'story'
   },
   likes: {
-    type: Number,
-    default: 0
+    type: likeSchema,
+    default: {
+      users: [],
+      count: 0
+    }
   },
   tags: [String],
   comments: [commentSchema],

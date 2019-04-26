@@ -133,7 +133,7 @@ export const signup = async (parent: T.Parent, { data }: T.Args) => {
   if (userExist) throw new Error('Email already rigistered')
 
   const hashPassword = await getHash(password)
-  const user = await new User({
+  await new User({
     email,
     username,
     password: hashPassword,
@@ -167,13 +167,21 @@ export const likePost = async (parent: T.Parent, { postId }: T.Args, { user }: a
     throw new Error(errorName.UNAUTHORIZED)
   }
 
-  const hasPost = await Post.findById(postId)
+  const hasPost: any = await Post.findById(postId)
 
   if (!hasPost) {
     throw new Error(errorName.INVALID_POST)
   }
 
-  return Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } }, { new: true })
+  const alreadyLikedPost = hasPost.likes.users.some((userId: any) => userId.toString() === user._id.toString())
+
+  const likedPost = () =>
+    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': 1 }, $push: { 'likes.users': user._id } }, { new: true })
+
+  const disLikedPost = () =>
+    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': -1 }, $pull: { 'likes.users': user._id } }, { new: true })
+
+  return alreadyLikedPost ? disLikedPost() : likedPost()
 }
 
 export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args, { user }: any) => {
@@ -191,6 +199,30 @@ export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args,
     postId,
     {
       $push: { 'comments.comment': comment, 'comments.user.userId': user._id, 'comments.user.username': user.username }
+    },
+    { new: true }
+  )
+}
+
+export const followUser = async (parent: T.Parent, { userId }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const followingUser = await User.findById(userId)
+
+  if (!followingUser) {
+    return new Error('You can not follow unexist user.')
+  }
+
+  await User.findByIdAndUpdate(userId, {
+    $push: { followers: user._id }
+  })
+
+  return User.findByIdAndUpdate(
+    user._id,
+    {
+      $push: { followings: userId }
     },
     { new: true }
   )
