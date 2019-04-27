@@ -162,7 +162,7 @@ export const login = async (parent: T.Parent, { data }: T.Args) => {
   }
 }
 
-export const likePost = async (parent: T.Parent, { postId }: T.Args, { user }: any) => {
+export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -204,25 +204,64 @@ export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args,
   )
 }
 
-export const followUser = async (parent: T.Parent, { userId }: T.Args, { user }: any) => {
+export const followUser = async (parent: T.Parent, { followingId }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
 
-  const followingUser = await User.findById(userId)
+  const followingUser: any = await User.findById(followingId)
 
   if (!followingUser) {
     return new Error('You can not follow unexist user.')
   }
 
-  await User.findByIdAndUpdate(userId, {
+  const isFollowing = followingUser.followings.some((id: any) => id.toString() === followingId)
+  if (isFollowing) {
+    // tslint:disable-next-line: prettier
+    return new Error('You already follows that user.')
+  }
+
+  // add userID to following users followers array
+  await User.findByIdAndUpdate(followingId, {
     $push: { followers: user._id }
+  })
+
+  // add followingid to current users followings array
+  return User.findByIdAndUpdate(
+    user._id,
+    {
+      $push: { followings: followingId }
+    },
+    { new: true }
+  )
+}
+
+export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { user }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const followingUser: any = await User.findById(followingId)
+
+  if (!followingUser) {
+    // tslint:disable-next-line: prettier
+    return new Error('You can\'t unfollow the user which is not exists.')
+  }
+
+  const isFollowing = followingUser.followings.some((id: any) => id.toString() === followingId)
+  if (!isFollowing) {
+    // tslint:disable-next-line: prettier
+    return new Error('You can\'t unfollow the user which you are not following.')
+  }
+
+  await User.findByIdAndUpdate(followingId, {
+    $pull: { followers: user._id }
   })
 
   return User.findByIdAndUpdate(
     user._id,
     {
-      $push: { followings: userId }
+      $pull: { followings: followingId }
     },
     { new: true }
   )

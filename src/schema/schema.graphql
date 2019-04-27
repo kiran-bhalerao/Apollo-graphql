@@ -16,12 +16,15 @@ type Mutation {
   deletePost(id: ID!): Post
   deleteAllPosts: String
   #post-ops
-  likePost(postId: ID!): Post!
+  likeDislikePost(postId: ID!): Post!
   commentPost(postId: ID!, comment: String!): Post!
   #users
   updateUser(data: updateUserInput!): User
   deleteUser: User
-  #user auth
+  #users-ops
+  followUser(followingId: ID!): User!
+  unFollowUser(followingId: ID!): User!
+  #user-auth
   signup(data: signupInput!): String!
   login(data: loginInput!): AuthPayload!
   forgatePassword(email: String!): String

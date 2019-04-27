@@ -26,6 +26,12 @@ const userSchema = new Schema({
       ref: 'post'
     }
   ],
+  bookmarks: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: 'post'
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now
