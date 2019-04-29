@@ -59,7 +59,6 @@ const schema = makeExecutableSchema({
   typeDefs,
   resolvers
 })
-
 const server = new ApolloServer({
   schema,
   context: ({ req }: { req: any }) => {

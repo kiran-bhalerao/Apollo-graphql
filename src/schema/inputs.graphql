@@ -1,6 +1,8 @@
 input createPostInput {
   title: String
   description: String
+  type: String
+  tags: [String]
 }
 
 input updatePostInput {
@@ -21,6 +23,6 @@ input updateUserInput {
 }
 
 input loginInput {
-  username: String!
+  email: String!
   password: String!
 }

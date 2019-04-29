@@ -15,6 +15,8 @@ type Mutation {
   updatePost(id: ID!, data: updatePostInput!): Post
   deletePost(id: ID!): Post
   deleteAllPosts: String
+  #timeline
+  userTimeline: [Post!]
   #post-ops
   likeDislikePost(postId: ID!): Post!
   commentPost(postId: ID!, comment: String!): Post!

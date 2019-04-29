@@ -10,7 +10,7 @@ import { createTokens } from '../utils/getToken'
 import { getUuid } from '../utils/getUuid'
 import sendMail from '../utils/sendMail'
 
-export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, user }: any) => {
+export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -33,12 +33,18 @@ export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, u
     $push: { posts: post._id }
   })
 
+  const postRedisId = `post@${post._id}`
+  redisClient.set(postRedisId, JSON.stringify(post))
+
+  const userRedisId = `usertimeline@${user._id}`
+  redisClient.sadd(userRedisId, postRedisId)
+
   await pubsub.publish(POST_CREATED, { createdPost: post })
 
   return post.save()
 }
 
-export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user }: any) => {
+export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -49,7 +55,7 @@ export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user 
     throw new Error(errorName.INVALID_POST)
   }
 
-  return Post.findByIdAndUpdate(
+  const updatedPost = await Post.findByIdAndUpdate(
     id,
     {
       ...data,
@@ -57,9 +63,20 @@ export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user 
     },
     { new: true }
   )
+
+  // remove old post from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  const postRedisId = `post@${id}`
+  await redisClient.srem(userRedisId, postRedisId)
+
+  // add updated post to redis cache
+  const updatedPostRedisId = `post@${updatedPost._id}`
+  await redisClient.sadd(userRedisId, updatedPostRedisId)
+
+  return updatedPost
 }
 
-export const deletePost = async (parent: T.Parent, { id }: T.Args, { user }: any) => {
+export const deletePost = async (parent: T.Parent, { id }: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -76,10 +93,15 @@ export const deletePost = async (parent: T.Parent, { id }: T.Args, { user }: any
     posts: [...remainingPosts]
   })
 
+  // remove post from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  const postRedisId = `post@${id}`
+  await redisClient.srem(userRedisId, postRedisId)
+
   return Post.findByIdAndDelete(id)
 }
 
-export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user }: any) => {
+export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -88,9 +110,29 @@ export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user }: 
     'author.id': user._id
   })
 
+  // remove all post's of user from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  await redisClient.del(userRedisId)
+
   return 'your all posts are deleted'
 }
 
+export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  // remove all post's of user from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  const userPosts = await redisClient.smembers(userRedisId)
+  const posts = await Promise.all(userPosts.map((postId: string) => redisClient.get(postId)))
+
+  return posts
+}
+
+/**
+ * user mutation's
+ */
 export const updateUser = async (parent: T.Parent, { data }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
@@ -147,7 +189,7 @@ export const login = async (parent: T.Parent, { data }: T.Args) => {
   const { email, password } = data
 
   const user: any = await User.findOne({ email })
-  if (!user) throw new Error('invalid username')
+  if (!user) throw new Error('invalid email')
 
   const isMatch = await bcrypt.compare(password, user.password)
   if (!isMatch) {
