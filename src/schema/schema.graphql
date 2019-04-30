@@ -17,6 +17,7 @@ type Mutation {
   deleteAllPosts: String
   #timeline
   userTimeline: [Post!]
+  homeTimeline: [Post!]
   #post-ops
   likeDislikePost(postId: ID!): Post!
   commentPost(postId: ID!, comment: String!): Post!

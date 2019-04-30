@@ -7,7 +7,8 @@ import {
   login,
   signup,
   updatePost,
-  updateUser
+  updateUser,
+  userTimeline
 } from './mutations'
 import { posts, users } from './query'
 import { post } from './subscription'
@@ -27,7 +28,13 @@ const resolvers = {
     updateUser,
     deleteUser,
     login,
-    forgatePassword
+    forgatePassword,
+    userTimeline
+  },
+  Post: {
+    id(post: any) {
+      return post._id
+    }
   },
   Subscription: {
     post

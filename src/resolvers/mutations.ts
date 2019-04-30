@@ -122,11 +122,36 @@ export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
     throw new Error(errorName.UNAUTHORIZED)
   }
 
-  // remove all post's of user from redis cache
+  // get all post's of user from redis cache
   const userRedisId = `usertimeline@${user._id}`
   const userPosts = await redisClient.smembers(userRedisId)
-  const posts = await Promise.all(userPosts.map((postId: string) => redisClient.get(postId)))
+  let posts: any = await Promise.all(userPosts.map((postId: string) => redisClient.get(postId)))
+  posts = posts.map((post: string) => JSON.parse(post))
 
+  // sort the posts[] by updated post date
+  return posts
+}
+
+export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const followingRedisId = `following@${user._id}`
+  const followings = await redisClient.smembers(followingRedisId)
+
+  const posts: any = [
+    ...followings.map(async (userId: any) => {
+      const userRedisId = `usertimeline@${userId}`
+      const userPosts = await redisClient.smembers(userRedisId)
+      let posts: any = await Promise.all(userPosts.map((postId: string) => redisClient.get(postId)))
+      posts = posts.map((post: string) => JSON.parse(post))
+
+      return posts
+    })
+  ]
+
+  // sort the posts[] by updated post date
   return posts
 }
 
@@ -246,7 +271,7 @@ export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args,
   )
 }
 
-export const followUser = async (parent: T.Parent, { followingId }: T.Args, { user }: any) => {
+export const followUser = async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -263,6 +288,9 @@ export const followUser = async (parent: T.Parent, { followingId }: T.Args, { us
     return new Error('You already follows that user.')
   }
 
+  const followingRedisId = `following@${user._id}`
+  await redisClient.sadd(followingRedisId, followingId)
+
   // add userID to following users followers array
   await User.findByIdAndUpdate(followingId, {
     $push: { followers: user._id }
@@ -278,7 +306,7 @@ export const followUser = async (parent: T.Parent, { followingId }: T.Args, { us
   )
 }
 
-export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { user }: any) => {
+export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
   }
@@ -299,6 +327,9 @@ export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { 
   await User.findByIdAndUpdate(followingId, {
     $pull: { followers: user._id }
   })
+
+  const followingRedisId = `following@${user._id}`
+  await redisClient.srem(followingRedisId, followingId)
 
   return User.findByIdAndUpdate(
     user._id,
