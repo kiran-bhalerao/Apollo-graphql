@@ -25,8 +25,8 @@ type Mutation {
   updateUser(data: updateUserInput!): User
   deleteUser: User
   #users-ops
-  followUser(followingId: ID!): User!
-  unFollowUser(followingId: ID!): User!
+  followUser(followTo: ID!): User!
+  unFollowUser(unFollowTo: ID!): User!
   #user-auth
   signup(data: signupInput!): String!
   login(data: loginInput!): AuthPayload!

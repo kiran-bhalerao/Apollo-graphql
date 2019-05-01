@@ -3,7 +3,10 @@ import {
   deleteAllPosts,
   deletePost,
   deleteUser,
+  followUser,
   forgatePassword,
+  homeTimeline,
+  likeDislikePost,
   login,
   signup,
   updatePost,
@@ -29,7 +32,10 @@ const resolvers = {
     deleteUser,
     login,
     forgatePassword,
-    userTimeline
+    userTimeline,
+    likeDislikePost,
+    followUser,
+    homeTimeline
   },
   Post: {
     id(post: any) {

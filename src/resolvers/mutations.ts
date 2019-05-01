@@ -10,6 +10,14 @@ import { createTokens } from '../utils/getToken'
 import { getUuid } from '../utils/getUuid'
 import sendMail from '../utils/sendMail'
 
+/*
+ * ============================
+ *
+ * Post Mutations
+ *
+ * ============================
+ */
+
 export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
@@ -117,6 +125,14 @@ export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, re
   return 'your all posts are deleted'
 }
 
+/*
+ * ============================
+ *
+ * Timelines Mutations
+ *
+ * ============================
+ */
+
 export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
@@ -140,24 +156,35 @@ export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
   const followingRedisId = `following@${user._id}`
   const followings = await redisClient.smembers(followingRedisId)
 
-  const posts: any = [
-    ...followings.map(async (userId: any) => {
+  let posts: any = await Promise.all(
+    followings.map(async (userId: any) => {
       const userRedisId = `usertimeline@${userId}`
       const userPosts = await redisClient.smembers(userRedisId)
-      let posts: any = await Promise.all(userPosts.map((postId: string) => redisClient.get(postId)))
-      posts = posts.map((post: string) => JSON.parse(post))
 
-      return posts
+      return userPosts
     })
-  ]
+  )
+
+  posts = await Promise.all(
+    posts.map(async (postId: any) => {
+      let post: any = await redisClient.get(postId)
+
+      return JSON.parse(post)
+    })
+  )
 
   // sort the posts[] by updated post date
   return posts
 }
 
-/**
- * user mutation's
+/*
+ * ============================
+ *
+ * User Mutations
+ *
+ * ============================
  */
+
 export const updateUser = async (parent: T.Parent, { data }: T.Args, { user }: any) => {
   if (!user) {
     throw new Error(errorName.UNAUTHORIZED)
@@ -172,11 +199,19 @@ export const deleteUser = async (parent: T.Parent, _args: T.Args, { user }: any)
   }
 
   await Post.deleteMany({
-    'author.id': user._id
+    'author.authorId': user._id
   })
 
   return User.findByIdAndDelete(user._id)
 }
+
+/*
+ * ============================
+ *
+ * Auth Mutations
+ *
+ * ============================
+ */
 
 export const forgatePassword = async (parent: T.Parent, { email }: T.Args, { redisClient }: any) => {
   const user: any = await User.findOne({ email })
@@ -228,6 +263,14 @@ export const login = async (parent: T.Parent, { data }: T.Args) => {
     message: 'User login successfully.'
   }
 }
+
+/*
+ * ============================
+ *
+ * User Ops Mutations
+ *
+ * ============================
+ */
 
 export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { user }: any) => {
   if (!user) {
