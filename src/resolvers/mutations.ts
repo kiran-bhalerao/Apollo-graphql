@@ -76,9 +76,11 @@ export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user,
   const userRedisId = `usertimeline@${user._id}`
   const postRedisId = `post@${id}`
   await redisClient.srem(userRedisId, postRedisId)
+  await redisClient.del(postRedisId)
 
   // add updated post to redis cache
   const updatedPostRedisId = `post@${updatedPost._id}`
+  await redisClient.set(updatedPostRedisId, JSON.stringify(updatedPost))
   await redisClient.sadd(userRedisId, updatedPostRedisId)
 
   return updatedPost
@@ -105,6 +107,7 @@ export const deletePost = async (parent: T.Parent, { id }: T.Args, { user, redis
   const userRedisId = `usertimeline@${user._id}`
   const postRedisId = `post@${id}`
   await redisClient.srem(userRedisId, postRedisId)
+  await redisClient.del(postRedisId)
 
   return Post.findByIdAndDelete(id)
 }
@@ -118,9 +121,13 @@ export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, re
     'author.id': user._id
   })
 
-  // remove all post's of user from redis cache
   const userRedisId = `usertimeline@${user._id}`
+  // remove all post's of user from usertimeline
   await redisClient.del(userRedisId)
+
+  //delete users all post from redis
+  const userPosts = await redisClient.smembers(userRedisId)
+  await Promise.all(userPosts.map((postId: string) => redisClient.del(postId)))
 
   return 'your all posts are deleted'
 }
@@ -180,6 +187,82 @@ export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
 /*
  * ============================
  *
+ * Post Ops Mutations
+ *
+ * ============================
+ */
+
+export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost: any = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  const alreadyLikedPost = hasPost.likes.users.some((userId: any) => userId.toString() === user._id.toString())
+
+  const likedPost = () =>
+    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': 1 }, $push: { 'likes.users': user._id } }, { new: true })
+
+  const disLikedPost = () =>
+    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': -1 }, $pull: { 'likes.users': user._id } }, { new: true })
+
+  const updatedPost = alreadyLikedPost ? await disLikedPost() : await likedPost()
+
+  // remove old post from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  const postRedisId = `post@${postId}`
+  await redisClient.srem(userRedisId, postRedisId)
+  await redisClient.del(postRedisId)
+
+  // add updated post to redis cache
+  const updatedPostRedisId = `post@${updatedPost._id}`
+  await redisClient.set(updatedPostRedisId, JSON.stringify(updatedPost))
+  await redisClient.sadd(userRedisId, updatedPostRedisId)
+
+  return updatedPost
+}
+
+export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    {
+      $push: { 'comments.comment': comment, 'comments.user.userId': user._id, 'comments.user.username': user.username }
+    },
+    { new: true }
+  )
+
+  // remove old post from redis cache
+  const userRedisId = `usertimeline@${user._id}`
+  const postRedisId = `post@${postId}`
+  await redisClient.srem(userRedisId, postRedisId)
+  await redisClient.del(postRedisId)
+
+  // add updated post to redis cache
+  const updatedPostRedisId = `post@${updatedPost._id}`
+  await redisClient.set(updatedPostRedisId, JSON.stringify(updatedPost))
+  await redisClient.sadd(userRedisId, updatedPostRedisId)
+
+  return updatePost
+}
+
+/*
+ * ============================
+ *
  * User Mutations
  *
  * ============================
@@ -208,111 +291,10 @@ export const deleteUser = async (parent: T.Parent, _args: T.Args, { user }: any)
 /*
  * ============================
  *
- * Auth Mutations
- *
- * ============================
- */
-
-export const forgatePassword = async (parent: T.Parent, { email }: T.Args, { redisClient }: any) => {
-  const user: any = await User.findOne({ email })
-  const key = getUuid()
-  const uid = user._id.toString()
-  await redisClient.set(key, uid, 'EX', 1800)
-
-  const link = `${process.env.BASE_URL}/forgate/password/${key}`
-  const subject = 'Forgate Password'
-  const template = getForgatePasswordTamplate(link, user.username)
-
-  sendMail(email, subject, template)
-
-  return 'Check your mail and recreate your password.'
-}
-
-export const signup = async (parent: T.Parent, { data }: T.Args) => {
-  const { email, username, password } = data
-
-  const userExist: any = await User.findOne({ email })
-  if (userExist) throw new Error('Email already rigistered')
-
-  const hashPassword = await getHash(password)
-  await new User({
-    email,
-    username,
-    password: hashPassword,
-    createdAt: new Date()
-  }).save()
-
-  return `Welcome ${username}, your registration done successfully.`
-}
-
-export const login = async (parent: T.Parent, { data }: T.Args) => {
-  const { email, password } = data
-
-  const user: any = await User.findOne({ email })
-  if (!user) throw new Error('invalid email')
-
-  const isMatch = await bcrypt.compare(password, user.password)
-  if (!isMatch) {
-    throw new Error('invalid password.')
-  }
-  const [accessToken, refreshToken] = await createTokens(user)
-
-  return {
-    accessToken,
-    refreshToken,
-    message: 'User login successfully.'
-  }
-}
-
-/*
- * ============================
- *
  * User Ops Mutations
  *
  * ============================
  */
-
-export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { user }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
-  const hasPost: any = await Post.findById(postId)
-
-  if (!hasPost) {
-    throw new Error(errorName.INVALID_POST)
-  }
-
-  const alreadyLikedPost = hasPost.likes.users.some((userId: any) => userId.toString() === user._id.toString())
-
-  const likedPost = () =>
-    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': 1 }, $push: { 'likes.users': user._id } }, { new: true })
-
-  const disLikedPost = () =>
-    Post.findByIdAndUpdate(postId, { $inc: { 'likes.count': -1 }, $pull: { 'likes.users': user._id } }, { new: true })
-
-  return alreadyLikedPost ? disLikedPost() : likedPost()
-}
-
-export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args, { user }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
-  const hasPost = await Post.findById(postId)
-
-  if (!hasPost) {
-    throw new Error(errorName.INVALID_POST)
-  }
-
-  return Post.findByIdAndUpdate(
-    postId,
-    {
-      $push: { 'comments.comment': comment, 'comments.user.userId': user._id, 'comments.user.username': user.username }
-    },
-    { new: true }
-  )
-}
 
 export const followUser = async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
   if (!user) {
@@ -381,4 +363,63 @@ export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { 
     },
     { new: true }
   )
+}
+
+/*
+ * ============================
+ *
+ * Auth Mutations
+ *
+ * ============================
+ */
+
+export const forgatePassword = async (parent: T.Parent, { email }: T.Args, { redisClient }: any) => {
+  const user: any = await User.findOne({ email })
+  const key = getUuid()
+  const uid = user._id.toString()
+  await redisClient.set(key, uid, 'EX', 1800)
+
+  const link = `${process.env.BASE_URL}/forgate/password/${key}`
+  const subject = 'Forgate Password'
+  const template = getForgatePasswordTamplate(link, user.username)
+
+  sendMail(email, subject, template)
+
+  return 'Check your mail and recreate your password.'
+}
+
+export const signup = async (parent: T.Parent, { data }: T.Args) => {
+  const { email, username, password } = data
+
+  const userExist: any = await User.findOne({ email })
+  if (userExist) throw new Error('Email already rigistered')
+
+  const hashPassword = await getHash(password)
+  await new User({
+    email,
+    username,
+    password: hashPassword,
+    createdAt: new Date()
+  }).save()
+
+  return `Welcome ${username}, your registration done successfully.`
+}
+
+export const login = async (parent: T.Parent, { data }: T.Args) => {
+  const { email, password } = data
+
+  const user: any = await User.findOne({ email })
+  if (!user) throw new Error('invalid email')
+
+  const isMatch = await bcrypt.compare(password, user.password)
+  if (!isMatch) {
+    throw new Error('invalid password.')
+  }
+  const [accessToken, refreshToken] = await createTokens(user)
+
+  return {
+    accessToken,
+    refreshToken,
+    message: 'User login successfully.'
+  }
 }
