@@ -7,6 +7,7 @@ scalar Date
 type Query {
   posts: [Post]!
   users: [UserQuery]
+  user: User!
 }
 
 type Mutation {
@@ -21,6 +22,8 @@ type Mutation {
   #post-ops
   likeDislikePost(postId: ID!): Post!
   commentPost(postId: ID!, comment: String!): Post!
+  bookmarkPost(postId: ID!): User!
+  unBookmarkPost(postId: ID!): User!
   #users
   updateUser(data: updateUserInput!): User
   deleteUser: User

@@ -1,4 +1,5 @@
 import {
+  bookmarkPost,
   createPost,
   deleteAllPosts,
   deletePost,
@@ -9,18 +10,20 @@ import {
   likeDislikePost,
   login,
   signup,
+  unBookmarkPost,
   updatePost,
   updateUser,
   userTimeline
 } from './mutations'
-import { posts, users } from './query'
+import { posts, user, users } from './query'
 import { post } from './subscription'
 
 // Provide resolver functions for your schema fields
 const resolvers = {
   Query: {
     posts,
-    users
+    users,
+    user
   },
   Mutation: {
     createPost,
@@ -35,7 +38,9 @@ const resolvers = {
     userTimeline,
     likeDislikePost,
     followUser,
-    homeTimeline
+    homeTimeline,
+    bookmarkPost,
+    unBookmarkPost
   },
   Post: {
     id(post: any) {

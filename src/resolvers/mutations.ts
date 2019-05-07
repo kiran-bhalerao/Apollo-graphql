@@ -152,6 +152,15 @@ export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
   posts = posts.map((post: string) => JSON.parse(post))
 
   // sort the posts[] by updated post date
+  // think posts are already sorted...
+
+  // posts = posts.sort((a: any, b: any) => {
+  //   const secPost: any = new Date(b.updatedAt)
+  //   const firstPost: any = new Date(a.updatedAt)
+
+  //   return secPost - firstPost
+  // })
+
   return posts
 }
 
@@ -258,6 +267,40 @@ export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args,
   await redisClient.sadd(userRedisId, updatedPostRedisId)
 
   return updatePost
+}
+
+// bookmark the post
+
+export const bookmarkPost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  const updateduser = await User.findByIdAndUpdate(user._id, { $push: { bookmarks: postId } }, { new: true })
+
+  return updateduser
+}
+
+export const unBookmarkPost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
+  if (!user) {
+    throw new Error(errorName.UNAUTHORIZED)
+  }
+
+  const hasPost = await Post.findById(postId)
+
+  if (!hasPost) {
+    throw new Error(errorName.INVALID_POST)
+  }
+
+  const updateduser = await User.findByIdAndUpdate(user._id, { $pop: { bookmarks: postId } }, { new: true })
+
+  return updateduser
 }
 
 /*
