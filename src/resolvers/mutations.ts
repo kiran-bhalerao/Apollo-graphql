@@ -1,14 +1,15 @@
-import bcrypt from 'bcryptjs'
-import { errorName } from '../define/errors'
-import { POST_CREATED } from '../define/variables'
-import Post from '../models/post'
-import User from '../models/user'
-import * as T from '../types/resolver'
-import { getForgatePasswordTamplate } from '../utils/getForgatePasswordTamplate'
-import getHash from '../utils/getHash'
-import { createTokens } from '../utils/getToken'
-import { getUuid } from '../utils/getUuid'
-import sendMail from '../utils/sendMail'
+import bcrypt from 'bcryptjs';
+import { errorName } from '../define/errors';
+import { POST_CREATED } from '../define/variables';
+import Post from '../models/post';
+import User from '../models/user';
+import * as T from '../types/resolver';
+import { getForgatePasswordTamplate } from '../utils/getForgatePasswordTamplate';
+import getHash from '../utils/getHash';
+import { createTokens } from '../utils/getToken';
+import { getUuid } from '../utils/getUuid';
+import sendMail from '../utils/sendMail';
+import { withAuth } from '../utils/withAuth';
 
 /*
  * ============================
@@ -18,11 +19,7 @@ import sendMail from '../utils/sendMail'
  * ============================
  */
 
-export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
+export const createPost = withAuth(async (parent: T.Parent, { data }: T.Args, { pubsub, user, redisClient }: any) => {
   const { title, description, type, tags } = data
   const post = new Post({
     title,
@@ -50,13 +47,9 @@ export const createPost = async (parent: T.Parent, { data }: T.Args, { pubsub, u
   await pubsub.publish(POST_CREATED, { createdPost: post })
 
   return post.save()
-}
+})
 
-export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
+export const updatePost = withAuth(async (parent: T.Parent, { id, data }: T.Args, { user, redisClient }: any) => {
   const hasPost = user.posts.some((post: string) => post.toString() === id)
 
   if (!hasPost) {
@@ -84,13 +77,9 @@ export const updatePost = async (parent: T.Parent, { id, data }: T.Args, { user,
   await redisClient.sadd(userRedisId, updatedPostRedisId)
 
   return updatedPost
-}
+})
 
-export const deletePost = async (parent: T.Parent, { id }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
+export const deletePost = withAuth(async (parent: T.Parent, { id }: T.Args, { user, redisClient }: any) => {
   const hasPost = user.posts.some((post: string) => post.toString() === id)
 
   if (!hasPost) {
@@ -110,13 +99,9 @@ export const deletePost = async (parent: T.Parent, { id }: T.Args, { user, redis
   await redisClient.del(postRedisId)
 
   return Post.findByIdAndDelete(id)
-}
+})
 
-export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
-
+export const deleteAllPosts = withAuth(async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
   await Post.deleteMany({
     'author.id': user._id
   })
@@ -130,7 +115,7 @@ export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, re
   await Promise.all(userPosts.map((postId: string) => redisClient.del(postId)))
 
   return 'your all posts are deleted'
-}
+})
 
 /*
  * ============================
@@ -140,10 +125,7 @@ export const deleteAllPosts = async (parent: T.Parent, _args: T.Args, { user, re
  * ============================
  */
 
-export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const userTimeline = withAuth(async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
 
   // get all post's of user from redis cache
   const userRedisId = `usertimeline@${user._id}`
@@ -162,12 +144,9 @@ export const userTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
   // })
 
   return posts
-}
+})
 
-export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const homeTimeline = withAuth(async (parent: T.Parent, _args: T.Args, { user, redisClient }: any) => {
 
   const followingRedisId = `following@${user._id}`
   const followings = await redisClient.smembers(followingRedisId)
@@ -191,7 +170,7 @@ export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
 
   // sort the posts[] by updated post date
   return posts
-}
+})
 
 /*
  * ============================
@@ -201,10 +180,7 @@ export const homeTimeline = async (parent: T.Parent, _args: T.Args, { user, redi
  * ============================
  */
 
-export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const likeDislikePost = withAuth(async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
 
   const hasPost: any = await Post.findById(postId)
 
@@ -234,12 +210,9 @@ export const likeDislikePost = async (parent: T.Parent, { postId }: T.Args, { us
   await redisClient.sadd(userRedisId, updatedPostRedisId)
 
   return updatedPost
-}
+})
 
-export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const commentPost = withAuth(async (parent: T.Parent, { postId, comment }: T.Args, { user, redisClient }: any) => {
 
   const hasPost = await Post.findById(postId)
 
@@ -267,14 +240,11 @@ export const commentPost = async (parent: T.Parent, { postId, comment }: T.Args,
   await redisClient.sadd(userRedisId, updatedPostRedisId)
 
   return updatePost
-}
+})
 
 // bookmark the post
 
-export const bookmarkPost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const bookmarkPost = withAuth(async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
 
   const hasPost = await Post.findById(postId)
 
@@ -285,12 +255,9 @@ export const bookmarkPost = async (parent: T.Parent, { postId }: T.Args, { user,
   const updateduser = await User.findByIdAndUpdate(user._id, { $push: { bookmarks: postId } }, { new: true })
 
   return updateduser
-}
+})
 
-export const unBookmarkPost = async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const unBookmarkPost = withAuth(async (parent: T.Parent, { postId }: T.Args, { user, redisClient }: any) => {
 
   const hasPost = await Post.findById(postId)
 
@@ -301,7 +268,7 @@ export const unBookmarkPost = async (parent: T.Parent, { postId }: T.Args, { use
   const updateduser = await User.findByIdAndUpdate(user._id, { $pop: { bookmarks: postId } }, { new: true })
 
   return updateduser
-}
+})
 
 /*
  * ============================
@@ -311,25 +278,19 @@ export const unBookmarkPost = async (parent: T.Parent, { postId }: T.Args, { use
  * ============================
  */
 
-export const updateUser = async (parent: T.Parent, { data }: T.Args, { user }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const updateUser = withAuth(async (parent: T.Parent, { data }: T.Args, { user }: any) => {
 
   return User.findByIdAndUpdate(user._id, { ...data }, { new: true })
-}
+})
 
-export const deleteUser = async (parent: T.Parent, _args: T.Args, { user }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const deleteUser = withAuth(async (parent: T.Parent, _args: T.Args, { user }: any) => {
 
   await Post.deleteMany({
     'author.authorId': user._id
   })
 
   return User.findByIdAndDelete(user._id)
-}
+})
 
 /*
  * ============================
@@ -339,10 +300,7 @@ export const deleteUser = async (parent: T.Parent, _args: T.Args, { user }: any)
  * ============================
  */
 
-export const followUser = async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const followUser = withAuth(async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
 
   const followingUser: any = await User.findById(followingId)
 
@@ -372,12 +330,9 @@ export const followUser = async (parent: T.Parent, { followingId }: T.Args, { us
     },
     { new: true }
   )
-}
+})
 
-export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
-  if (!user) {
-    throw new Error(errorName.UNAUTHORIZED)
-  }
+export const unFollowUser = withAuth(async (parent: T.Parent, { followingId }: T.Args, { user, redisClient }: any) => {
 
   const followingUser: any = await User.findById(followingId)
 
@@ -406,7 +361,7 @@ export const unFollowUser = async (parent: T.Parent, { followingId }: T.Args, { 
     },
     { new: true }
   )
-}
+})
 
 /*
  * ============================
