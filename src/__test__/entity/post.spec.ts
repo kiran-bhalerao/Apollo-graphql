@@ -1,6 +1,6 @@
-import { connection, Types } from 'mongoose';
-import { clearDB, connectToDB, disconnectDB } from '../../config/database';
-import postResolver from '../../entity/post/post.resolver';
+import { connection, Types } from 'mongoose'
+import { clearDB, connectToDB, disconnectDB } from '../../config/database'
+import postResolver from '../../entity/post/post.resolver'
 
 describe('Post', () => {
   beforeAll(connectToDB)
