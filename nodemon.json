@@ -1,7 +1,7 @@
 {
   "verbose": true,
   "watch": ["src", "**/*.ts"],
-  "ext": "ts",
+  "ext": "ts,graphql",
   "ignore": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "exec": "ts-node app.ts"
 }

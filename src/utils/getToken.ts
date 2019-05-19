@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
-import User from '../models/user'
+import User from '../entity/user/user.model'
+// import User from '../models/user'
 import * as T from '../types/user'
 
 const { JWT_SECRET } = process.env

@@ -1,0 +1,46 @@
+scalar Date
+
+type Post {
+  id: ID!
+  title: String!
+  description: String
+  author: Author!
+  createdAt: Date
+  updatedAt: Date
+}
+
+input createPostInput {
+  title: String
+  description: String
+  type: String
+  tags: [String]
+}
+
+input updatePostInput {
+  title: String
+  description: String
+}
+
+type Query {
+  posts: [Post]!
+}
+
+type Mutation {
+  #posts
+  createPost(data: createPostInput!): Post
+  updatePost(id: ID!, data: updatePostInput!): Post
+  deletePost(id: ID!): Post
+  deleteAllPosts: String
+  #timeline
+  userTimeline: [Post!]
+  homeTimeline: [Post!]
+  #post-ops
+  likeDislikePost(postId: ID!): Post!
+  commentPost(postId: ID!, comment: String!): Post!
+  bookmarkPost(postId: ID!): User!
+  unBookmarkPost(postId: ID!): User!
+}
+
+type Subscription {
+  post: Post
+}

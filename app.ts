@@ -2,21 +2,23 @@ import { ApolloServer, PubSub } from 'apollo-server-express'
 import bodyParser from 'body-parser'
 import express from 'express'
 import exphbs from 'express-handlebars'
-import { importSchema } from 'graphql-import'
 import { makeExecutableSchema } from 'graphql-tools'
 import http from 'http'
 import jwt from 'jsonwebtoken'
 import _ from 'lodash'
-import databaseConnect from './src/config/database'
+import { fileLoader, mergeResolvers, mergeTypes } from 'merge-graphql-schemas'
+import path from 'path'
+import { connectToDB } from './src/config/database'
 import redisClient from './src/config/redis'
 import console from './src/define/console'
-import User from './src/models/user'
-import resolvers from './src/resolvers'
+import User from './src/entity/user/user.model'
 import routes from './src/routes'
 import { getErrorType } from './src/utils/getErrorType'
 import { refreshTokens } from './src/utils/getToken'
 
-const typeDefs = importSchema('./src/schema/schema.graphql')
+const typeDefs = mergeTypes(fileLoader(path.join(__dirname, 'src/entity/**/*.graphql')), { all: true })
+const resolvers = mergeResolvers(fileLoader(path.join(__dirname, '/src/entity/**/*.resolver.ts')))
+
 const pubsub = new PubSub()
 const app = express()
 
@@ -87,7 +89,7 @@ const httpServer = http.createServer(app)
 server.installSubscriptionHandlers(httpServer)
 
 const startServer = async () => {
-  await databaseConnect()
+  await connectToDB()
   httpServer.listen({ port: 4000 }, () =>
     console.rainbow(`Server ready at ${process.env.BASE_URL}${server.graphqlPath}`)
   ) //🌈

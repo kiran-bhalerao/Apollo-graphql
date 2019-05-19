@@ -1,0 +1,4 @@
+{
+  "presets": [["@babel/preset-env", { "targets": { "esmodules": true } }]],
+  "plugins": ["@babel/proposal-class-properties", "@babel/proposal-object-rest-spread"]
+}

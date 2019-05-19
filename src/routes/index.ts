@@ -1,4 +1,5 @@
-import User from '../models/user'
+import User from '../entity/user/user.model'
+// import User from '../models/user'
 import getHash from '../utils/getHash'
 
 export default (app: any, redisClient: any) => {

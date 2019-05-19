@@ -1,6 +1,6 @@
 import * as mongoose from 'mongoose'
-import * as T from '../types/comment'
-import getLocalTime from '../utils/getLocalTime'
+import * as T from '../../types/comment'
+import getLocalTime from '../../utils/getLocalTime'
 
 const { Schema } = mongoose
 

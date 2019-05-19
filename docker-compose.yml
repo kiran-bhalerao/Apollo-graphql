@@ -1,0 +1,28 @@
+version: '3'
+services: 
+  mongodb:
+    image: 'mongo:latest'
+  redis:
+    image: 'redis:latest'
+  nginx:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./nginx
+    depends_on:
+      - apollo-server
+    ports:
+      - '4000:80'
+  apollo-server:
+    build: 
+      dockerfile: Dockerfile
+      context: .
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - /apollo-server/node_modules
+      - .:/apollo-server
+    environment:
+      - REDIS_HOST=redis
+      - MONGO_HOST=mongodb

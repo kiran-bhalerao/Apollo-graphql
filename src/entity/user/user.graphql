@@ -1,0 +1,61 @@
+scalar Date
+
+type Query {
+  users: [UserQuery]
+  user: User!
+}
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+  password: String!
+  posts: [String!]!
+}
+
+type Author {
+  id: String!
+  username: String
+}
+
+type UserQuery {
+  id: ID!
+  username: String!
+  posts: [String!]!
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  message: String
+}
+
+input signupInput {
+  email: String
+  username: String
+  password: String
+}
+
+input updateUserInput {
+  email: String
+  username: String
+  password: String
+}
+
+input loginInput {
+  email: String!
+  password: String!
+}
+
+type Mutation {
+  #users
+  updateUser(data: updateUserInput!): User
+  deleteUser: User
+  #users-ops
+  followUser(followTo: ID!): User!
+  unFollowUser(unFollowTo: ID!): User!
+  #user-auth
+  signup(data: signupInput!): String!
+  login(data: loginInput!): AuthPayload!
+  forgatePassword(email: String!): String
+}
