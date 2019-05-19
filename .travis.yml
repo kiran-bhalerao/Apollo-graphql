@@ -6,4 +6,4 @@ before_install:
   - docker build -t bhaleraok65/apollo-server-test .
 
 script: 
-  - docker run bhaleraok65/apollo-server-test yarn test -- --coverage
+  - docker run bhaleraok65/apollo-server-test yarn test --coverage
