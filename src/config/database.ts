@@ -10,7 +10,7 @@ let { MONGO_HOST, DATABASE_NAME, TEST_DATABASE_URL } = process.env
 MONGO_HOST = MONGO_HOST || 'localhost'
 const DATABASE_URL = TEST_DATABASE_URL || `mongodb://${MONGO_HOST}/${DATABASE_NAME}`
 
-console.log(DATABASE_URL)
+console.log(TEST_DATABASE_URL)
 
 export const connectToDB = async (done = () => {}) => {
   await mongoose.connect(DATABASE_URL, { useNewUrlParser: true })
